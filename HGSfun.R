@@ -984,14 +984,27 @@ xts2smp <- function(x, fn_out, verbose = T){
 
 ##----------------------------------------------------------------------------##
 
-read.smp <- function(file, out = "data.frame"){
+#' reads PEST sample file
+#' 
+#' @details Reads a PEST sample file (.smp) to data frame or xts object
+#'
+#' @param file smp file
+#' @param out.format 
+#'
+#' @return if 'out.format' == "data.frame" a data frame with columns Date, Series and Value.
+#'    if 'out.format' == "xts" an xts with a column for each unique name in Series.
+#' @export
+#'
+read.smp <- function(file, out.format = c("data.frame", "xts")){
+  out.format <- match.arg(out.format)
+  
   df <- 
     read.table(file) %>% 
     transmute(Date = as.POSIXct(paste(V2,V3), format = "%d/%m/%Y %H:%M:%S"), 
               Series = V1, 
               Value = V4)
   
-  if(out %in% c("xts")){
+  if(out.format %in% c("xts")){
     df <- pivot_wider(df, id_cols = Date, names_from = Series, values_from = Value)
     xts(df[,-1], order.by = df$Date, tzone = "Etc/GMT-1")
   } else{
@@ -1185,4 +1198,30 @@ sim2smp <- function(dir = getwd(), var = c("head", "GWL", "depth", "Q", "dischar
   }
 
   
+}
+
+# ================================================================ #
+
+#' Goodness of fit from sample files
+#' 
+#' @details Usefull to quickly calculate the goodness of fit from the PEST 
+#'    sample files (.smp). Missing values are removed. 
+#'    Multiple files with multiple variables could be used.
+#'
+#' @param fn_sim sample file(s) of simulated data
+#' @param fn_obs sample file(s) of observed data
+#' @param ... further arguments passed to [hydroGOF::gof()]
+#'
+#' @inheritSection hydroGOF::gof() return 
+#' @export
+#'
+smp2gof <- function(fn_sim, fn_obs,...){
+  l_sim <- lapply(fn_sim, function(x) read.smp(x, out.format = "xts"))
+  l_obs <- lapply(fn_obs, function(x) read.smp(x, out.format = "xts"))
+  sim <- do.call(merge, l_sim)
+  obs <- do.call(merge, l_obs)
+  
+ do.call(cbind, 
+          lapply(intersect(colnames(sim), colnames(obs)),
+                 function(x)hydroGOF::gof(sim[,x], obs[,x], ...)))
 }

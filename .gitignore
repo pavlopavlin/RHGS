@@ -1,0 +1,10 @@
+.Rproj.user
+*.RData
+.Ruserdata
+*.Rhistory
+*.RDS
+GIS.Rmd
+GIS.nb.html
+RFit.R
+observation_points.R
+simple_drain.R
